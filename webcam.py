@@ -9,7 +9,7 @@ else:
     frame_width, frame_height = 640, 480
 
 fourcc = cv.VideoWriter_fourcc(*'mp4v')
-output = cv.VideoWriter('output.mp4', fourcc, 30.0, (frame_width, frame_height))
+output = cv.VideoWriter('output.mp4', fourcc, 60.0, (frame_width, frame_height))
 
 if not camera.isOpened():
     print('Erro ao tentar abrir a camera')
