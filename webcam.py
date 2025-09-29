@@ -1,5 +1,5 @@
 import cv2 as cv
- 
+
 camera = cv.VideoCapture(0)
 
 ret, frame = camera.read()
@@ -8,7 +8,7 @@ if ret:
 else:
     frame_width, frame_height = 640, 480
 
-fourcc = cv.VideoWriter_fourcc(*'mp4v')
+fourcc = cv.VideoWriter.fourcc(*'mp4v')
 output = cv.VideoWriter('output.mp4', fourcc, 60.0, (frame_width, frame_height))
 
 if not camera.isOpened():
@@ -23,11 +23,11 @@ while True:
         break
 
     output.write(frame)
-    
+
     cv.imshow('frame', frame)
     if cv.waitKey(1) == ord('q'):
         break
-    
+
 camera.release()
 output.release()
 cv.destroyAllWindows()
