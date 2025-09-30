@@ -1,57 +1,64 @@
 import cv2 as cv
 import numpy as np
 
-def count_chocolate_drops(image_path: str, width: int = 1000, height: int = 1000) -> int:
-    img = cv.imread(image_path)
-    if img is None:
-        print(f"Failed to load image: {image_path}")
-        return 0
 
-    img_resized = cv.resize(img, (width, height))
+def process_cookie_images(image_paths: list[str]) -> None:
+    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
+    previous_equalized = None
+    base_size = None  # (width, height)
 
-    cv.imshow(f'Cookie: {image_path}', img_resized)
+    for index, image_path in enumerate(image_paths):
+        original_gray = cv.imread(image_path, cv.IMREAD_GRAYSCALE)
+        if original_gray is None:
+            print(f"Failed to load image: {image_path}")
+            continue
 
-    blackandwhiteimg = cv.cvtColor(img_resized, cv.COLOR_BGR2GRAY)
-    blackandwhiteimg = cv.GaussianBlur(blackandwhiteimg, (5, 5), 0)
-    blackandwhiteimg = cv.threshold(blackandwhiteimg, 50, 255, cv.THRESH_BINARY)[1]
+        equalized = cv.equalizeHist(original_gray)
 
-    # BLOB
-    params = cv.SimpleBlobDetector_Params()
-    params.filterByArea = True
-    params.minArea = 10
-    params.filterByCircularity = True
-    params.minCircularity = 0.3
-    params.filterByConvexity = True
-    params.minConvexity = 0.3
-    blob = cv.SimpleBlobDetector_create(params)
+        if base_size is None:
+            base_size = (equalized.shape[1], equalized.shape[0])
+        else:
+            if (equalized.shape[1], equalized.shape[0]) != base_size:
+                equalized = cv.resize(equalized, base_size)
+        print (index) # debug
+        if previous_equalized is None:
+            opened = cv.morphologyEx(equalized, cv.MORPH_OPEN, kernel)
+            opened = cv.threshold(opened, 127, 255, cv.THRESH_BINARY)[1]
+            opened = cv.dilate(opened, kernel, iterations=3)
 
-    # DILATATION
-    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (10, 10))
-    blackandwhiteimg = cv.dilate(blackandwhiteimg, kernel, iterations=1)
+            contours, _ = cv.findContours(opened, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 
-    # EROSAO
-    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (40, 40))
-    blackandwhiteimg = cv.erode(blackandwhiteimg, kernel, iterations=1)
+            contour_mask = np.zeros_like(opened)
+            cv.drawContours(contour_mask, contours, -1, 255, 10)
 
-    contours, hierarchy = cv.findContours(blackandwhiteimg, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+            cv.imshow(f'Opening (first): {image_path}', opened)
+            cv.imshow(f'Contours (first): {image_path}', contour_mask)
+            print(f'Contours detected in {image_path}: {len(contours)}')
+        else:
+            change = cv.absdiff(equalized, previous_equalized)
+            opened = cv.morphologyEx(change, cv.MORPH_OPEN, kernel)
+            opened = cv.threshold(opened, 127, 255, cv.THRESH_BINARY)[1]
+            opened = cv.dilate(opened, kernel, iterations=3)
 
-    # draw contours in blue
-    img_with_contours = cv.drawContours(blackandwhiteimg, contours, -1, (60,0,255), 1)
+            contours, _ = cv.findContours(opened, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 
-    cv.imshow(f'Cookie: {image_path}', img_with_contours)
+            contour_mask = np.zeros_like(opened)
+            cv.drawContours(contour_mask, contours, -1, 255, 10)
 
-    print(f'Number of chocolate drops in {image_path}: {len(contours)}')
-    
-    return len(contours)
+            cv.imshow(f'Opening: {image_path}', opened)
+            cv.imshow(f'Contours: {image_path}', contour_mask)
+            print(f'Contours detected in {image_path}: {len(contours)}')
 
-image_files = [
-    'cookies/cookie3obgbreno.png',
+        previous_equalized = equalized
+
+
+imgs = [
+    'cookies/cookie3.png',
     'cookies/cookie.png',
-    'cookies/cookie2.png'
+    'cookies/cookie2.png',
 ]
 
-for image_file in image_files:
-    count_chocolate_drops(image_file)
+process_cookie_images(imgs)
 
 cv.waitKey(0)
 cv.destroyAllWindows()
